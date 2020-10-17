@@ -1,6 +1,33 @@
 name: 'Simple Tweet Action'
 description: 'Publish Tweets from the cmdline for a user'
 author: 'thomasjungblut'
+branding:
+  icon: "cloud"
+  color: "blue"
+inputs:
+  message:
+    description: "the tweet you want to send, can't be empty or longer than 280 characters long"
+    required: true
+  TWITTER_APP_KEY:
+    description: "the Twitter app key"
+    required: true
+  TWITTER_APP_SECRET:
+    description: "the Twitter app secret"
+    required: true
+  TWITTER_ACCESS_TOKEN:
+    description: "your personal Twitter access key for the app"
+    required: true
+  TWITTER_ACCESS_SECRET:
+    description: "your personal Twitter access token for the app"
+    required: true
 runs:
   using: 'docker'
   image: 'Dockerfile'
+  args:
+    - -message
+    - ${{ inputs.message }}
+  env:
+    TWITTER_APP_KEY: ${{ inputs.TWITTER_APP_KEY }}
+    TWITTER_APP_SECRET: ${{ inputs.TWITTER_APP_SECRET }}
+    TWITTER_ACCESS_TOKEN: ${{ inputs.TWITTER_ACCESS_TOKEN }}
+    TWITTER_ACCESS_SECRET: ${{ inputs.TWITTER_ACCESS_SECRET }}

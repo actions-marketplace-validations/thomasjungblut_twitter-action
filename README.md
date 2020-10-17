@@ -10,14 +10,16 @@ Once you have created a new app, you need to add permissions to `Read and Write`
 * API Key + Secret of the app
 * Access Token + Secret for your own user account 
 
-# Use Action
+# Use as a step in your action
 
 ```
-action "Send a tweet" {
-  uses = "thomasjungblut/twitter-action@master"
-  args = ["-message", "test"]
-  secrets = ["TWITTER_APP_KEY", "TWITTER_APP_SECRET", "TWITTER_ACCESS_TOKEN", "TWITTER_ACCESS_SECRET"]
-}
+  - uses: thomasjungblut/twitter-action@master
+    with:
+      message: "test from actions"  
+      TWITTER_APP_KEY: ${{ secrets.TWITTER_APP_KEY }}
+      TWITTER_APP_SECRET: ${{ secrets.TWITTER_APP_SECRET }}
+      TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+      TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }} 
 ```
 
 # Install locally
