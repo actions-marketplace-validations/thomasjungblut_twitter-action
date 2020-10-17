@@ -1,97 +1,58 @@
 package main
 
 import (
-    "flag"
-    "github.com/coreos/pkg/flagutil"
-    "github.com/dghubble/go-twitter/twitter"
-    "github.com/dghubble/oauth1"
-    "io/ioutil"
-    "log"
-    "os"
-    "strings"
+	"flag"
+	"github.com/coreos/pkg/flagutil"
+	"github.com/dghubble/go-twitter/twitter"
+	"github.com/dghubble/oauth1"
+	"log"
+	"os"
 )
 
-// Func to join my two strings
-func join(strs ...string) string {
-       var sb strings.Builder
-       for _, str := range strs {
-           sb.WriteString(str)
-       }
-       return sb.String()
-    }
-
-// Validate if requested 'name' flag is defined in cli
-func isFlagPassed(name string) bool {
-    found := false
-    flag.Visit(func(f *flag.Flag) {
-        if f.Name == name {
-            found = true
-        }
-    })
-    return found
+func checkNonEmptyOrFatal(s string, varName string) {
+	if s == "" {
+		log.Fatalf("%s was not passed", varName)
+	}
 }
 
 func main() {
-    flags := flag.NewFlagSet("user-auth", flag.ExitOnError)
-    consumerKey := flags.String("consumer-key", "", "Twitter Consumer Key")
-    consumerSecret := flags.String("consumer-secret", "", "Twitter Consumer Secret")
-    accessToken := flags.String("access-token", "", "Twitter Access Token")
-    accessSecret := flags.String("access-secret", "", "Twitter Access Secret")
-    tweetMessage := flags.String("message", "", "Tweet Message")
-    tweetFile := flags.String("file", "", "File Containing Tweet Message Content")
-    dryRun := flags.Bool("dry", false,"Test mode, nothing will be sent to twitter")
-    flags.Parse(os.Args[1:]) 
-    flagutil.SetFlagsFromEnv(flags, "TWITTER")
+	flags := flag.NewFlagSet("tweet", flag.ExitOnError)
+	appKey := flags.String("app-key", "", "Twitter App Key")
+	appSecret := flags.String("app-secret", "", "Twitter App Secret")
+	accessToken := flags.String("access-token", "", "Twitter Personal Access Token")
+	accessSecret := flags.String("access-secret", "", "Twitter Personal Access Secret")
+	tweetMessage := flags.String("message", "", "Tweet Message")
+	err := flags.Parse(os.Args[1:])
+	if err != nil {
+		log.Fatalf("error during argument parsing: %v", err)
+	}
 
-    // Validating the credentials are available (unless dryRun)
-    if (*consumerKey == "" || *consumerSecret == "" || *accessToken == "" || *accessSecret == "") && !*dryRun {
-        log.Fatal("Consumer key/secret and Access token/secret required")
-    }
+	err = flagutil.SetFlagsFromEnv(flags, "TWITTER")
+	if err != nil {
+		log.Fatalf("error when setting flags from env variables: %v", err)
+	}
 
-    // If the flag file have been given, grab the content of the file after checking if the path exist
-    if !isFlagPassed(*tweetFile) {
-        _, err := os.Stat(*tweetFile)
-        if err != nil {
-            if os.IsNotExist(err) {
-                log.Fatalf("File %s does not exist.", *tweetFile)
-            } else {
-                log.Fatal(err)
-            }
-        }
-    }
+	checkNonEmptyOrFatal(*appKey, "app-key")
+	checkNonEmptyOrFatal(*appSecret, "app-secret")
+	checkNonEmptyOrFatal(*accessToken, "access-token")
+	checkNonEmptyOrFatal(*accessSecret, "access-secret")
 
-    // Reading file content
-    fileContent, err := ioutil.ReadFile(*tweetFile)
+	// validate a content is available and does not exceed 280 chars, because those are the rules of twitter
+	if len(*tweetMessage) == 0 {
+		log.Fatal("Your tweet is empty!")
+	} else if len(*tweetMessage) > 280 {
+		log.Fatal("Tweet must be less than 280 characters long")
+	}
 
-    // Assembling the message then the content of the file for the tweet
-    tweetContent := string(join(*tweetMessage, string(fileContent)))
+	config := oauth1.NewConfig(*appKey, *appSecret)
+	token := oauth1.NewToken(*accessToken, *accessSecret)
+	httpClient := config.Client(oauth1.NoContext, token)
+	client := twitter.NewClient(httpClient)
+	tweet, _, err := client.Statuses.Update(*tweetMessage, nil)
 
-    // Validation a content is available and does not exeed 280 char
-    if len(tweetContent) == 0 {
-        log.Fatal("Your tweet is empty !")
-    } else if len(tweetContent) > 280 {
-        log.Fatal("Tweet must be less than 280 char")
-    }
+	if err != nil {
+		log.Fatalf("error while posting tweet: %v", err)
+	}
 
-    // Posting tweet
-    if *dryRun {
-        log.Print("Logging in, creating client and updating status.")
-    } else {
-        // Setup auth
-        config := oauth1.NewConfig(*consumerKey, *consumerSecret)
-        token := oauth1.NewToken(*accessToken, *accessSecret)
-
-        // http.Client will automatically authorize Requests
-        httpClient := config.Client(oauth1.NoContext, token)
-
-        // Twitter client
-        client := twitter.NewClient(httpClient)
-        _, _, err = client.Statuses.Update(tweetContent, nil)
-        // Handling Error
-        if err != nil {
-            log.Fatal(err)
-        }
-    }
-
-    log.Printf("Status updated with: " + tweetContent)
+	log.Printf("Successfully sent tweet: '%s' at %s", *tweetMessage, tweet.CreatedAt)
 }
