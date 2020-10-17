@@ -1,0 +1,6 @@
+name: 'Simple Tweet Action'
+description: 'Publish Tweets from the cmdline for a user'
+author: 'thomasjungblut'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
